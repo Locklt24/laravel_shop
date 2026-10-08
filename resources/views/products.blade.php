@@ -3,6 +3,18 @@
 @section('title', 'Sản phẩm')
 
 @section('content')
+    @if (session('success'))
+        <p style="color: green;">{{ session('success') }}</p>
+    @endif
+
+    @if (session('error'))
+        <p style="color: red;">{{ session('error') }}</p>
+    @endif
+
+    @error('variant_id')
+        <p style="color: red;">{{ $message }}</p>
+    @enderror
+
     <form action="{{ route('products') }}" method="GET">
         <input
             type="text"
@@ -60,12 +72,11 @@
                 <h3>{{ $product->name }}</h3>
                 <p>{{ $product->description }}</p>
                 <p>Giá: {{ number_format($product->price, 0, ',', '.') }}đ</p>
-                <p>Còn lại: {{ $product->stock }}</p>
+                <p>Còn lại: {{ $product->variants_sum_stock ?? 0 }}</p>
 
-                <form action="{{ route('cart.add', $product->id) }}" method="POST">
-                    @csrf
-                    <button type="submit">Thêm vào giỏ</button>
-                </form>
+                <a href="{{ route('products.show', $product) }}" class="btn btn-primary">
+                    Xem sản phẩm và chọn size
+                </a>
 
                 @if (auth()->user()?->role === 'admin')
                     <br>

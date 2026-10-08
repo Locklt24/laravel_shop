@@ -13,6 +13,10 @@
         <p style="color: red;">{{ session('error') }}</p>
     @endif
 
+    @error('quantity')
+        <p style="color: red;">{{ $message }}</p>
+    @enderror
+
     @if (empty($cart))
         <p>Giỏ hàng của bạn đang trống.</p>
         <a href="{{ route('products') }}">Xem sản phẩm</a>
@@ -28,6 +32,7 @@
                 @endif
 
                 <h3>{{ $item['name'] }}</h3>
+                <p>Màu: {{ $item['color'] }} | Size: {{ $item['size'] }}</p>
                 <p>Giá: {{ number_format($item['price'], 0, ',', '.') }}đ</p>
 
                 <form action="{{ route('cart.update', $item['id']) }}" method="POST">

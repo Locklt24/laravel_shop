@@ -2,77 +2,87 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Models\ProductVariant;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class CartController extends Controller
 {
-    public function index()
+    public function index(): View
     {
         $cart = session('cart', []);
 
-        $total = collect($cart)->sum(function ($item) {
+        $total = collect($cart)->sum(function (array $item): float {
             return $item['price'] * $item['quantity'];
         });
 
         return view('cart.index', compact('cart', 'total'));
     }
 
-    public function add(Product $product)
+    public function add(Request $request): RedirectResponse
     {
+        $data = $request->validate([
+            'variant_id' => 'required|integer|exists:product_variants,id',
+            'quantity' => 'required|integer|min:1',
+        ]);
+
+        $variant = ProductVariant::with('product')->findOrFail($data['variant_id']);
         $cart = session('cart', []);
 
-        $currentQuantity = $cart[$product->id]['quantity'] ?? 0;
+        $currentQuantity = (int) ($cart[$variant->id]['quantity'] ?? 0);
+        $newQuantity = $currentQuantity + $data['quantity'];
 
-        if ($currentQuantity >= $product->stock) {
-            return back()->with('error', 'Số lượng trong kho không đủ.');
+        if ($newQuantity > $variant->stock) {
+            return back()->with(
+                'error',
+                "Chỉ còn {$variant->stock} sản phẩm cho màu và size này."
+            );
         }
 
-        if (isset($cart[$product->id])) {
-            $cart[$product->id]['quantity']++;
-        } else {
-            $cart[$product->id] = [
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->price,
-                'image' => $product->image,
-                'quantity' => 1,
-            ];
-        }
+        $cart[$variant->id] = [
+            'id' => $variant->id,
+            'name' => $variant->product->name,
+            'color' => $variant->color,
+            'size' => $variant->size,
+            'price' => $variant->product->price,
+            'image' => $variant->product->image,
+            'quantity' => $newQuantity,
+        ];
 
         session(['cart' => $cart]);
 
-        return back()->with('success', 'Đã thêm sản phẩm vào giỏ hàng!');
+        return back()->with('success', 'Đã thêm vào giỏ hàng.');
     }
 
-    public function update(Request $request, Product $product)
+    public function update(Request $request, ProductVariant $variant): RedirectResponse
     {
-        $request->validate([
+        $data = $request->validate([
             'quantity' => 'required|integer|min:1',
         ]);
 
         $cart = session('cart', []);
 
-        if (! isset($cart[$product->id])) {
+        if (! isset($cart[$variant->id])) {
             return redirect()->route('cart.index');
         }
 
-        if ($request->quantity > $product->stock) {
-            return back()->with('error', 'Số lượng yêu cầu vượt quá tồn kho.');
+        if ($data['quantity'] > $variant->stock) {
+            return back()->with('error', 'Biến thể này không đủ tồn kho.');
         }
 
-        $cart[$product->id]['quantity'] = $request->quantity;
+        $cart[$variant->id]['quantity'] = (int) $data['quantity'];
 
         session(['cart' => $cart]);
 
         return back()->with('success', 'Đã cập nhật giỏ hàng!');
     }
 
-    public function remove(Product $product)
+    public function remove(int $variantId): RedirectResponse
     {
         $cart = session('cart', []);
 
-        unset($cart[$product->id]);
+        unset($cart[$variantId]);
 
         session(['cart' => $cart]);
 

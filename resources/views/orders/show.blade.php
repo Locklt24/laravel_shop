@@ -20,6 +20,9 @@
     @foreach ($order->items as $item)
         <p>
             {{ $item->product_name }}
+            @if ($item->color && $item->size)
+                ({{ $item->color }} / {{ $item->size }})
+            @endif
             × {{ $item->quantity }}
             — {{ number_format($item->subtotal, 0, ',', '.') }}đ
         </p>

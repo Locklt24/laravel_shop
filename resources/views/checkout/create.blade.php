@@ -14,6 +14,7 @@
     @foreach ($cart as $item)
         <p>
             {{ $item['name'] }}
+            ({{ $item['color'] }} / {{ $item['size'] }})
             × {{ $item['quantity'] }}
             — {{ number_format($item['price'] * $item['quantity'], 0, ',', '.') }}đ
         </p>
