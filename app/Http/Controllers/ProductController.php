@@ -61,13 +61,20 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'category_id' => 'nullable|exists:categories,id',
         ]);
 
         if ($request->hasFile('image')) {
-            $validated['image'] = $request->file('image')
-                ->store('products', 'public');
+            $imagePath = $request->file('image')->store('products', 'public');
+
+            if ($imagePath === false) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['image' => 'Không thể lưu ảnh. Vui lòng thử lại.']);
+            }
+
+            $validated['image'] = $imagePath;
         }
 
         Product::create($validated);
@@ -91,20 +98,29 @@ class ProductController extends Controller
             'description' => 'nullable|string',
             'price' => 'required|numeric|min:0',
             'stock' => 'required|integer|min:0',
-            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
             'category_id' => 'nullable|exists:categories,id',
         ]);
 
+        $oldImagePath = $product->image;
+
         if ($request->hasFile('image')) {
-            if ($product->image) {
-                Storage::disk('public')->delete($product->image);
+            $imagePath = $request->file('image')->store('products', 'public');
+
+            if ($imagePath === false) {
+                return back()
+                    ->withInput()
+                    ->withErrors(['image' => 'Không thể lưu ảnh. Vui lòng thử lại.']);
             }
 
-            $validated['image'] = $request->file('image')
-                ->store('products', 'public');
+            $validated['image'] = $imagePath;
         }
 
         $product->update($validated);
+
+        if (isset($imagePath) && $oldImagePath) {
+            Storage::disk('public')->delete($oldImagePath);
+        }
 
         return redirect()
             ->route('products')

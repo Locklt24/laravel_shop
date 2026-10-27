@@ -109,6 +109,61 @@ class ProductManagementTest extends TestCase
         Storage::disk('public')->assertExists($product->image);
     }
 
+    public function test_admin_cannot_replace_a_product_image_with_one_over_the_size_limit(): void
+    {
+        Storage::fake('public');
+        $oldImagePath = UploadedFile::fake()
+            ->image('ao-cu.png')
+            ->store('products', 'public');
+        $product = Product::factory()->create(['image' => $oldImagePath]);
+
+        $response = $this->actingAs($this->admin())
+            ->put(route('products.update', $product), [
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'stock' => $product->stock,
+                'image' => UploadedFile::fake()->image('ao-moi.png')->size(2049),
+            ]);
+
+        $response->assertSessionHasErrors('image');
+        $this->assertDatabaseHas('products', [
+            'id' => $product->id,
+            'image' => $oldImagePath,
+        ]);
+        Storage::disk('public')->assertExists($oldImagePath);
+    }
+
+    public function test_admin_keeps_the_existing_image_when_replacement_cannot_be_stored(): void
+    {
+        Storage::fake('public');
+        $oldImagePath = UploadedFile::fake()
+            ->image('ao-cu.png')
+            ->store('products', 'public');
+        $product = Product::factory()->create(['image' => $oldImagePath]);
+        $disk = \Mockery::mock(Storage::disk('public'))->makePartial();
+        $disk->shouldReceive('putFileAs')->once()->andReturn(false);
+        Storage::set('public', $disk);
+
+        $response = $this->actingAs($this->admin())
+            ->put(route('products.update', $product), [
+                'name' => $product->name,
+                'description' => $product->description,
+                'price' => $product->price,
+                'stock' => $product->stock,
+                'image' => UploadedFile::fake()->image('ao-moi.png'),
+            ]);
+
+        $response->assertSessionHasErrors([
+            'image' => 'Không thể lưu ảnh. Vui lòng thử lại.',
+        ]);
+        $this->assertDatabaseHas('products', [
+            'id' => $product->id,
+            'image' => $oldImagePath,
+        ]);
+        Storage::disk('public')->assertExists($oldImagePath);
+    }
+
     public function test_customer_cannot_manage_products(): void
     {
         $customer = User::factory()->create(['role' => 'customer']);
