@@ -18,6 +18,26 @@ class CheckoutControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_checkout_shows_delivery_form_and_cart_summary(): void
+    {
+        $variant = ProductVariant::factory()->create(['color' => 'Blue', 'size' => 'M']);
+        $this->actingAs(User::factory()->create(['name' => 'Nguyen An']))
+            ->withSession(['cart' => [$variant->id => $this->cartItem($variant, 2)]]);
+
+        $response = $this->get(route('checkout.create'));
+
+        $response->assertSeeText('Thông tin giao hàng')
+            ->assertSeeText($variant->product->name)
+            ->assertSeeText('Blue')
+            ->assertSeeText('M')
+            ->assertSeeText('300.000đ')
+            ->assertSee('name="receiver_name"', false)
+            ->assertSee('name="phone"', false)
+            ->assertSee('name="address"', false)
+            ->assertSee('value="Nguyen An"', false)
+            ->assertSee(route('checkout.store'), false);
+    }
+
     public function test_creates_variant_order_snapshots_using_database_prices_and_reduces_only_variant_stock(): void
     {
         $user = User::factory()->create();

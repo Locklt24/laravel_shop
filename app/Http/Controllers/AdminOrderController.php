@@ -8,20 +8,38 @@ use App\Models\ProductVariant;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AdminOrderController extends Controller
 {
+    private const ALLOWED_TRANSITIONS = [
+        'pending' => ['shipping', 'cancelled'],
+        'shipping' => ['completed', 'cancelled'],
+        'completed' => [],
+        'cancelled' => [],
+    ];
+
     public function index(): View
     {
         $orders = Order::with('user')->latest()->get();
 
-        return view('admin.orders.index', compact('orders'));
+        $summary = [
+            'total' => $orders->count(),
+            'pending' => $orders->where('status', 'pending')->count(),
+            'shipping' => $orders->where('status', 'shipping')->count(),
+            'completed' => $orders->where('status', 'completed')->count(),
+        ];
+
+        return view('admin.orders.index', compact('orders', 'summary'));
     }
 
     public function edit(Order $order): View
     {
-        return view('admin.orders.edit', compact('order'));
+        return view('admin.orders.edit', [
+            'order' => $order,
+            'allowedTransitions' => self::ALLOWED_TRANSITIONS[$order->status] ?? [],
+        ]);
     }
 
     public function update(Request $request, Order $order): RedirectResponse
@@ -32,18 +50,12 @@ class AdminOrderController extends Controller
 
         DB::transaction(function () use ($data, $order): void {
             $order = Order::lockForUpdate()->findOrFail($order->id);
-            $allowedTransitions = [
-                'pending' => ['shipping', 'cancelled'],
-                'shipping' => ['completed', 'cancelled'],
-                'completed' => [],
-                'cancelled' => [],
-            ];
 
-            abort_unless(
-                in_array($data['status'], $allowedTransitions[$order->status] ?? [], true),
-                422,
-                'Không thể chuyển sang trạng thái này.'
-            );
+            if (! in_array($data['status'], self::ALLOWED_TRANSITIONS[$order->status] ?? [], true)) {
+                throw ValidationException::withMessages([
+                    'status' => 'Không thể chuyển sang trạng thái này. Vui lòng tải lại đơn hàng và thử lại.',
+                ]);
+            }
 
             if ($data['status'] === 'cancelled') {
                 $items = $order->items()->orderBy('id')->get();

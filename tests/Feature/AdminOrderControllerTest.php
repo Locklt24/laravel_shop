@@ -16,6 +16,46 @@ class AdminOrderControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_admin_order_dashboard_shows_summary_and_recent_orders(): void
+    {
+        $customer = User::factory()->create(['name' => 'Nguyen An', 'email' => 'an@example.com']);
+        $pendingOrder = OrderFactory::new()->for($customer)->create([
+            'code' => 'DH-PENDING-001',
+            'status' => 'pending',
+        ]);
+        OrderFactory::new()->for($customer)->create([
+            'code' => 'DH-SHIPPING-001',
+            'status' => 'shipping',
+        ]);
+        OrderFactory::new()->for($customer)->create([
+            'code' => 'DH-COMPLETED-001',
+            'status' => 'completed',
+        ]);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $response = $this->get(route('admin.orders.index'));
+
+        $response->assertSeeText('Quản lý đơn hàng')
+            ->assertSeeText('DH-PENDING-001')
+            ->assertSeeText('DH-SHIPPING-001')
+            ->assertSeeText('DH-COMPLETED-001')
+            ->assertSeeText('an@example.com')
+            ->assertSeeText('Chờ xác nhận')
+            ->assertSeeText('Đang giao')
+            ->assertSeeText('Hoàn thành')
+            ->assertSee(route('admin.orders.edit', $pendingOrder), false);
+    }
+
+    public function test_admin_order_dashboard_shows_an_empty_state_when_there_are_no_orders(): void
+    {
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $response = $this->get(route('admin.orders.index'));
+
+        $response->assertSeeText('Chưa có đơn hàng nào')
+            ->assertSeeText('Tổng đơn hàng');
+    }
+
     public function test_cancellation_restores_the_stock_deducted_during_variant_checkout(): void
     {
         $variant = ProductVariant::factory()->create(['stock' => 12]);
@@ -67,7 +107,8 @@ class AdminOrderControllerTest extends TestCase
         $order = $this->variantOrder($variant, $currentStatus);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $response = $this->put(route('admin.orders.update', $order), ['status' => $nextStatus]);
+        $response = $this->from(route('admin.orders.edit', $order))
+            ->put(route('admin.orders.update', $order), ['status' => $nextStatus]);
 
         $response->assertRedirectToRoute('admin.orders.index');
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => $nextStatus]);
@@ -79,17 +120,44 @@ class AdminOrderControllerTest extends TestCase
     #[TestWith(['completed', 'cancelled'])]
     #[TestWith(['cancelled', 'pending'])]
     #[TestWith(['cancelled', 'cancelled'])]
-    public function test_returns_422_for_invalid_order_transitions_without_changing_stock(string $currentStatus, string $nextStatus): void
+    public function test_redirects_with_an_error_for_invalid_order_transitions_without_changing_stock(string $currentStatus, string $nextStatus): void
     {
         $variant = ProductVariant::factory()->create(['stock' => 10]);
         $order = $this->variantOrder($variant, $currentStatus);
         $this->actingAs(User::factory()->create(['role' => 'admin']));
 
-        $response = $this->put(route('admin.orders.update', $order), ['status' => $nextStatus]);
+        $response = $this->from(route('admin.orders.edit', $order))
+            ->put(route('admin.orders.update', $order), ['status' => $nextStatus]);
 
-        $response->assertUnprocessable();
+        $response->assertRedirectToRoute('admin.orders.edit', $order)
+            ->assertSessionHasErrors([
+                'status' => 'Không thể chuyển sang trạng thái này. Vui lòng tải lại đơn hàng và thử lại.',
+            ]);
         $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => $currentStatus]);
         $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'stock' => 10]);
+    }
+
+    public function test_order_edit_form_only_offers_allowed_next_statuses(): void
+    {
+        $order = OrderFactory::new()->create(['status' => 'shipping']);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $response = $this->get(route('admin.orders.edit', $order));
+
+        $response->assertSee('value="completed"', false)
+            ->assertSee('value="cancelled"', false)
+            ->assertDontSee('value="pending"', false);
+    }
+
+    public function test_order_edit_form_explains_when_status_cannot_be_changed_further(): void
+    {
+        $order = OrderFactory::new()->create(['status' => 'completed']);
+        $this->actingAs(User::factory()->create(['role' => 'admin']));
+
+        $response = $this->get(route('admin.orders.edit', $order));
+
+        $response->assertSeeText('Đơn hàng đã ở trạng thái cuối cùng và không thể thay đổi thêm.')
+            ->assertDontSee('name="status"', false);
     }
 
     public function test_cancels_a_legacy_order_by_returning_its_product_stock(): void
