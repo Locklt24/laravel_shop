@@ -17,6 +17,15 @@
 
             <div class="col-md-7">
                 <h1>{{ $product->name }}</h1>
+                <a class="product-review-summary" href="#product-reviews">
+                    <span class="product-review-summary__stars" aria-label="Đánh giá trung bình {{ number_format((float) ($product->reviews_avg_rating ?? 0), 1) }} trên 5">
+                        @for ($star = 1; $star <= 5; $star++)
+                            <span aria-hidden="true">{{ $star <= round((float) ($product->reviews_avg_rating ?? 0)) ? '★' : '☆' }}</span>
+                        @endfor
+                    </span>
+                    <strong>{{ number_format((float) ($product->reviews_avg_rating ?? 0), 1) }}</strong>
+                    <span>{{ $product->reviews_count }} đánh giá</span>
+                </a>
                 <p>{{ $product->description }}</p>
                 <h3>{{ number_format($product->price, 0, ',', '.') }}đ</h3>
 
@@ -98,6 +107,130 @@
             </div>
         </div>
     </div>
+
+    <section class="product-reviews" id="product-reviews" aria-labelledby="product-reviews-title">
+        <div class="product-reviews__heading">
+            <div>
+                <span class="eyebrow">Chia sẻ trải nghiệm</span>
+                <h2 id="product-reviews-title">Đánh giá sản phẩm</h2>
+                <p>Ý kiến từ những khách hàng đã mua sản phẩm này.</p>
+            </div>
+            <div class="product-reviews__score">
+                <strong>{{ number_format((float) ($product->reviews_avg_rating ?? 0), 1) }}</strong>
+                <span class="product-review-summary__stars" aria-hidden="true">
+                    @for ($star = 1; $star <= 5; $star++)
+                        {{ $star <= round((float) ($product->reviews_avg_rating ?? 0)) ? '★' : '☆' }}
+                    @endfor
+                </span>
+                <span>{{ $product->reviews_count }} đánh giá</span>
+            </div>
+        </div>
+
+        @if (session('review_success'))
+            <div class="notice notice--success" role="status">{{ session('review_success') }}</div>
+        @endif
+
+        @if ($errors->has('review'))
+            <div class="notice notice--error" role="alert">{{ $errors->first('review') }}</div>
+        @endif
+
+        @if ($canReview)
+            <form class="product-review-form" action="{{ route('products.reviews.store', $product) }}" method="POST">
+                @csrf
+                <h3>Đánh giá của bạn</h3>
+                <fieldset class="product-review-rating">
+                    <legend>Chọn số sao <span aria-hidden="true">*</span></legend>
+                    <div class="product-review-rating__options">
+                        @for ($rating = 5; $rating >= 1; $rating--)
+                            <input
+                                id="rating-{{ $rating }}"
+                                type="radio"
+                                name="rating"
+                                value="{{ $rating }}"
+                                @checked((string) old('rating') === (string) $rating)
+                                required
+                            >
+                            <label for="rating-{{ $rating }}" aria-label="{{ $rating }} sao" title="{{ $rating }} sao">★</label>
+                        @endfor
+                    </div>
+                    @error('rating')
+                        <span class="product-review-form__error">{{ $message }}</span>
+                    @enderror
+                </fieldset>
+
+                <label class="product-review-form__comment" for="review-comment">
+                    Nhận xét <span>(không bắt buộc)</span>
+                    <textarea
+                        id="review-comment"
+                        name="comment"
+                        rows="4"
+                        maxlength="2000"
+                        placeholder="Chia sẻ cảm nhận của bạn về sản phẩm..."
+                        @error('comment') aria-invalid="true" @enderror
+                    >{{ old('comment') }}</textarea>
+                    @error('comment')
+                        <span class="product-review-form__error">{{ $message }}</span>
+                    @enderror
+                </label>
+
+                <button class="button button--dark" type="submit">Gửi đánh giá <span aria-hidden="true">→</span></button>
+            </form>
+        @elseif (auth()->check() && $userReview)
+            <div class="product-review-notice" role="status">
+                <span aria-hidden="true">✓</span> Bạn đã gửi đánh giá cho sản phẩm này. Cảm ơn bạn!
+            </div>
+        @elseif (auth()->check())
+            <div class="product-review-notice">
+                <span aria-hidden="true">♧</span> Chỉ khách hàng đã mua sản phẩm và có đơn hoàn thành mới có thể đánh giá.
+            </div>
+        @else
+            <div class="product-review-notice">
+                <span aria-hidden="true">♧</span>
+                <a href="{{ route('login') }}">Đăng nhập</a> và hoàn thành đơn hàng để gửi đánh giá.
+            </div>
+        @endif
+
+        @if ($reviews->isEmpty())
+            <div class="product-reviews__empty">
+                <span aria-hidden="true">☆</span>
+                <p>Chưa có đánh giá nào. Hãy là người đầu tiên chia sẻ cảm nhận!</p>
+            </div>
+        @else
+            <div class="product-review-list">
+                @foreach ($reviews as $review)
+                    <article class="product-review">
+                        <div class="product-review__avatar" aria-hidden="true">
+                            {{ Illuminate\Support\Str::of($review->user->name)->substr(0, 1)->upper() }}
+                        </div>
+                        <div class="product-review__content">
+                            <div class="product-review__top">
+                                <div>
+                                    <strong>{{ $review->user->name }}</strong>
+                                    <span class="product-review-summary__stars" aria-label="{{ $review->rating }} trên 5 sao">
+                                        @for ($star = 1; $star <= 5; $star++)
+                                            <span aria-hidden="true">{{ $star <= $review->rating ? '★' : '☆' }}</span>
+                                        @endfor
+                                    </span>
+                                </div>
+                                <time datetime="{{ $review->created_at->toDateString() }}">
+                                    {{ $review->created_at->format('d/m/Y') }}
+                                </time>
+                            </div>
+                            @if ($review->comment)
+                                <p>{{ $review->comment }}</p>
+                            @endif
+                        </div>
+                    </article>
+                @endforeach
+            </div>
+
+            @if ($reviews->hasPages())
+                <div class="product-reviews__pagination">
+                    {{ $reviews->fragment('product-reviews')->links() }}
+                </div>
+            @endif
+        @endif
+    </section>
 
     @if ($variants->isNotEmpty())
         <script>

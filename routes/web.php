@@ -6,6 +6,7 @@ use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ProductReviewController;
 use App\Http\Middleware\EnsureVariantCart;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,10 @@ Route::middleware(['auth', 'admin'])->group(function (): void {
 
 Route::get('/san-pham/{product}', [ProductController::class, 'show'])
     ->name('products.show');
+
+Route::post('/san-pham/{product}/danh-gia', [ProductReviewController::class, 'store'])
+    ->middleware('auth')
+    ->name('products.reviews.store');
 use App\Http\Controllers\AuthController;
 
 Route::middleware('guest')->group(function () {

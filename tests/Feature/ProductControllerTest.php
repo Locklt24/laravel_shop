@@ -4,12 +4,40 @@ namespace Tests\Feature;
 
 use App\Models\Product;
 use App\Models\ProductVariant;
+use Database\Seeders\ProductSeeder;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Tests\TestCase;
 
 class ProductControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
+
+    public function test_seeded_products_display_their_product_illustrations(): void
+    {
+        (new ProductSeeder)->run();
+        $product = Product::where('name', 'Áo thun oversize trắng')->firstOrFail();
+
+        $response = $this->get(route('products.show', $product));
+
+        $response->assertSee(asset('storage/'.$product->image), false)
+            ->assertSee('alt="Áo thun oversize trắng"', false);
+        $this->assertFileExists(storage_path('app/public/'.$product->image));
+    }
+
+    public function test_seeding_preserves_a_product_image_uploaded_by_an_admin(): void
+    {
+        Product::factory()->create([
+            'name' => 'Áo thun oversize trắng',
+            'image' => 'products/admin-upload.webp',
+        ]);
+
+        (new ProductSeeder)->run();
+
+        $this->assertDatabaseHas('products', [
+            'name' => 'Áo thun oversize trắng',
+            'image' => 'products/admin-upload.webp',
+        ]);
+    }
 
     public function test_lists_product_stock_and_links_to_the_product_detail_page(): void
     {

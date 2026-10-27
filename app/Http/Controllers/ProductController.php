@@ -33,7 +33,14 @@ class ProductController extends Controller
 
     public function show(Product $product): View
     {
-        $product->load('variants');
+        $product->load('variants')
+            ->loadAvg('reviews', 'rating')
+            ->loadCount('reviews');
+
+        $reviews = $product->reviews()
+            ->with('user:id,name')
+            ->latest()
+            ->paginate(10);
 
         $variants = $product->variants
             ->map(fn ($variant): array => [
@@ -44,7 +51,18 @@ class ProductController extends Controller
             ])
             ->values();
 
-        return view('products.show', compact('product', 'variants'));
+        $userReview = auth()->user()?->productReviews()
+            ->whereBelongsTo($product)
+            ->first();
+
+        $canReview = auth()->check()
+            && ! $userReview
+            && auth()->user()
+                ->orders()
+                ->completedContainingProduct($product)
+                ->exists();
+
+        return view('products.show', compact('product', 'variants', 'reviews', 'userReview', 'canReview'));
     }
 
     public function create(): View
