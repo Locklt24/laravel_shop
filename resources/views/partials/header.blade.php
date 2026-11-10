@@ -23,6 +23,12 @@
                     <button class="site-nav__logout" type="submit">Đăng xuất</button>
                 </form>
             @else
+                <a
+                    class="site-nav__register {{ request()->routeIs('register') ? 'is-active' : '' }}"
+                    href="{{ route('register') }}"
+                >
+                    Đăng ký
+                </a>
                 <a class="site-nav__login" href="{{ route('login') }}">Đăng nhập</a>
             @endauth
         </nav>
