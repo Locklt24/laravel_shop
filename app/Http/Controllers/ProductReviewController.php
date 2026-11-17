@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Order;
 use App\Models\Product;
 use App\Models\ProductReview;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -24,12 +24,12 @@ class ProductReviewController extends Controller
         ]);
 
         $user = $request->user();
-        $hasCompletedPurchase = Order::query()
-            ->whereBelongsTo($user)
-            ->completedContainingProduct($product)
-            ->exists();
 
-        if (! $hasCompletedPurchase) {
+        if (! $user instanceof User) {
+            abort(401);
+        }
+
+        if (! $user->hasCompletedPurchaseOf($product)) {
             throw ValidationException::withMessages([
                 'review' => 'Bạn chỉ có thể đánh giá sản phẩm sau khi đơn hàng đã hoàn thành.',
             ]);

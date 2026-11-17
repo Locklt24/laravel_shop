@@ -2,8 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Scope;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 class Order extends Model
@@ -26,12 +24,5 @@ class Order extends Model
     public function items()
     {
         return $this->hasMany(OrderItem::class);
-    }
-
-    #[Scope]
-    protected function completedContainingProduct(Builder $query, Product $product): void
-    {
-        $query->where('status', 'completed')
-            ->whereHas('items', fn (Builder $query) => $query->whereBelongsTo($product));
     }
 }

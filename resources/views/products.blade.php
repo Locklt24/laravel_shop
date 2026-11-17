@@ -83,9 +83,9 @@
                     <article class="product-card">
                         <a href="{{ route('products.show', $product) }}" class="product-card__link">
                             <div class="product-card__image">
-                                @if ($product->image)
+                                @if ($product->image_url)
                                     <img
-                                        src="{{ asset('storage/' . $product->image) }}"
+                                        src="{{ $product->image_url }}"
                                         alt="{{ $product->name }}"
                                         loading="lazy"
                                     >

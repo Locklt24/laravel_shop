@@ -70,6 +70,9 @@
                 <p style="color: red;">{{ $message }}</p>
             @enderror
         </div>
+
+        @include('products.partials.variant-fields', ['variantRows' => $variantRows])
+
         <div>
             <label for="image">Ảnh sản phẩm:</label><br>
             <input type="file" id="image" name="image" accept="image/*">

@@ -6,9 +6,9 @@
     <div class="container py-4">
         <div class="row g-4">
             <div class="col-md-5">
-                @if ($product->image)
+                @if ($product->image_url)
                     <img
-                        src="{{ asset('storage/' . $product->image) }}"
+                        src="{{ $product->image_url }}"
                         alt="{{ $product->name }}"
                         class="img-fluid rounded"
                     >

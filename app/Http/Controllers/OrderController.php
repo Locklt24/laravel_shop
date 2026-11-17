@@ -3,13 +3,20 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\View\View;
 
 class OrderController extends Controller
 {
-    public function show(Order $order)
+    public function show(Request $request, Order $order): View
     {
-        $isOwner = $order->user_id === auth()->id();
-        $isAdmin = auth()->user()->role === 'admin';
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 401);
+
+        $isOwner = $order->user_id === $user->getKey();
+        $isAdmin = $user->role === 'admin';
 
         abort_unless($isOwner || $isAdmin, 403);
 
@@ -17,9 +24,14 @@ class OrderController extends Controller
 
         return view('orders.show', compact('order'));
     }
-    public function index()
+
+    public function index(Request $request): View
     {
-        $orders = auth()->user()
+        $user = $request->user();
+
+        abort_unless($user instanceof User, 401);
+
+        $orders = $user
             ->orders()
             ->latest()
             ->get();

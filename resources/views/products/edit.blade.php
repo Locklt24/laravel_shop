@@ -12,9 +12,9 @@
         <div>
             <label for="image">Đổi ảnh sản phẩm:</label><br>
 
-            @if ($product->image)
+            @if ($product->image_url)
                 <img
-                    src="{{ asset('storage/' . $product->image) }}"
+                    src="{{ $product->image_url }}"
                     alt="{{ $product->name }}"
                     width="120"
                 >
@@ -77,6 +77,9 @@
                 <p style="color: red;">{{ $message }}</p>
             @enderror
         </div>
+
+        @include('products.partials.variant-fields', ['variantRows' => $variantRows])
+
         <div>
             <label for="category_id">Danh mục:</label><br>
 

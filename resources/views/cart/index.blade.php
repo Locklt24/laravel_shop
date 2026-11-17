@@ -56,7 +56,7 @@
                             <div class="cart-item__image">
                                 @if ($item['image'])
                                     <img
-                                        src="{{ asset('storage/' . $item['image']) }}"
+                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item['image']) }}"
                                         alt="{{ $item['name'] }}"
                                         loading="lazy"
                                     >

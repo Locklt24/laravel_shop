@@ -6,6 +6,7 @@ namespace App\Models;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -26,6 +27,14 @@ class User extends Authenticatable
     public function productReviews(): HasMany
     {
         return $this->hasMany(ProductReview::class);
+    }
+
+    public function hasCompletedPurchaseOf(Product $product): bool
+    {
+        return $this->orders()
+            ->where('status', 'completed')
+            ->whereHas('items', fn (Builder $query) => $query->whereBelongsTo($product))
+            ->exists();
     }
 
     /**
