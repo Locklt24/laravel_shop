@@ -75,11 +75,27 @@
 
         <div>
             <label for="image">Ảnh sản phẩm:</label><br>
-            <input type="file" id="image" name="image" accept="image/*">
+            <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp">
 
             @error('image')
                 <p style="color: red;">{{ $message }}</p>
             @enderror
+        </div>
+
+        <br>
+
+        <div>
+            <label for="images">Ảnh mẫu khác (có thể chọn nhiều ảnh):</label><br>
+            <input type="file" id="images" name="images[]" accept=".jpg,.jpeg,.png,.webp" multiple>
+            <small>Tối đa 10 ảnh cho mỗi sản phẩm, mỗi ảnh không quá 10 MB.</small>
+
+            @foreach ($errors->getMessages() as $field => $messages)
+                @if ($field === 'images' || str_starts_with($field, 'images.'))
+                    @foreach ($messages as $message)
+                        <p style="color: red;">{{ $message }}</p>
+                    @endforeach
+                @endif
+            @endforeach
         </div>
 
         <br>

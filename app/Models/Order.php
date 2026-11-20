@@ -14,6 +14,13 @@ class Order extends Model
         'address',
         'total_amount',
         'status',
+        'payment_method',
+        'payment_status',
+        'shipping_fee',
+        'province',
+        'district',
+        'ward',
+        'shipping_note',
     ];
 
     public function user()

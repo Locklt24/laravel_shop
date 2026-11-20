@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Product;
 use App\Models\ProductVariant;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
@@ -143,6 +144,18 @@ class CartControllerTest extends TestCase
         $response = $this->get(route('cart.index'));
 
         $response->assertSeeText('Màu: Purple | Size: XL');
+    }
+
+    public function test_displays_product_images_from_r2_in_the_cart(): void
+    {
+        Storage::fake('r2');
+        $product = Product::factory()->create(['image' => 'products/cart-image.webp']);
+        $variant = ProductVariant::factory()->for($product)->create();
+        $this->withSession(['cart' => [$variant->id => $this->cartItem($variant)]]);
+
+        $response = $this->get(route('cart.index'));
+
+        $response->assertSee(Storage::disk('r2')->url('products/cart-image.webp'), false);
     }
 
     public function test_removes_a_variant_that_was_deleted_after_being_added_to_the_cart(): void

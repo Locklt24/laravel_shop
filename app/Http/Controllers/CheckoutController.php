@@ -8,11 +8,16 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
+    private const FREE_SHIPPING_THRESHOLD = 500000;
+
+    private const SHIPPING_FEE = 30000;
+
     public function create(): View|RedirectResponse
     {
         $cart = session('cart', []);
@@ -26,16 +31,32 @@ class CheckoutController extends Controller
         $total = collect($cart)->sum(function (array $item): float {
             return $item['price'] * $item['quantity'];
         });
+        $shippingFee = $this->shippingFee($total);
+        $grandTotal = $total + $shippingFee;
 
-        return view('checkout.create', compact('cart', 'total'));
+        return view('checkout.create', compact('cart', 'total', 'shippingFee', 'grandTotal'));
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $provinces = array_column(
+            json_decode(
+                file_get_contents(public_path('data/vietnam-provinces.json')),
+                true,
+                flags: JSON_THROW_ON_ERROR
+            ),
+            'name'
+        );
+
         $data = $request->validate([
             'receiver_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
-            'address' => 'required|string|max:500',
+            'province' => ['required', 'string', 'max:100', Rule::in($provinces)],
+            'ward' => 'required|string|max:100',
+            'shipping_note' => 'nullable|string|max:500',
+            'payment_method' => 'required|in:cod,bank_transfer',
+        ], [
+            'province.in' => 'Vui lòng chọn tỉnh/thành phố theo danh sách hiện hành.',
         ]);
 
         $cart = session('cart', []);
@@ -77,14 +98,22 @@ class CheckoutController extends Controller
                 $total += $variant->product->price * $quantity;
             }
 
+            $shippingFee = $this->shippingFee($total);
+
             $order = Order::create([
                 'user_id' => $request->user()->id,
                 'code' => 'DH-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
                 'receiver_name' => $data['receiver_name'],
                 'phone' => $data['phone'],
-                'address' => $data['address'],
-                'total_amount' => $total,
+                'address' => collect([$data['ward'], $data['province']])->filter()->join(', '),
+                'province' => $data['province'],
+                'ward' => $data['ward'],
+                'shipping_note' => $data['shipping_note'] ?? null,
+                'total_amount' => $total + $shippingFee,
                 'status' => 'pending',
+                'payment_method' => $data['payment_method'],
+                'payment_status' => 'pending',
+                'shipping_fee' => $shippingFee,
             ]);
 
             foreach ($variantIds as $variantId) {
@@ -114,5 +143,12 @@ class CheckoutController extends Controller
         return redirect()
             ->route('orders.show', $order)
             ->with('success', 'Đặt hàng thành công!');
+    }
+
+    private function shippingFee(float $subtotal): int
+    {
+        return $subtotal >= self::FREE_SHIPPING_THRESHOLD
+            ? 0
+            : self::SHIPPING_FEE;
     }
 }

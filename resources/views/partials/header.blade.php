@@ -14,8 +14,17 @@
             </a>
             @auth
                 <a class="{{ request()->routeIs('orders.*') ? 'is-active' : '' }}" href="{{ route('orders.index') }}">Đơn hàng</a>
+                <a class="{{ request()->routeIs('wishlist.*') ? 'is-active' : '' }}" href="{{ route('wishlist.index') }}">
+                    Yêu thích
+                    @php
+                        $wishlistCount = auth()->user()->favoriteProducts()->count();
+                    @endphp
+                    @if ($wishlistCount > 0)
+                        <span>{{ $wishlistCount }}</span>
+                    @endif
+                </a>
                 @if (auth()->user()->role === 'admin')
-                    <a class="{{ request()->routeIs('admin.orders.*') ? 'is-active' : '' }}" href="{{ route('admin.orders.index') }}">Quản lý</a>
+                    <a class="{{ request()->routeIs('admin.*') ? 'is-active' : '' }}" href="{{ route('admin.dashboard') }}">Quản lý</a>
                 @endif
                 <a class="{{ request()->routeIs('dashboard') ? 'is-active' : '' }}" href="{{ route('dashboard') }}">Tài khoản</a>
                 <form action="{{ route('logout') }}" method="POST">

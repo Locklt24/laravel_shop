@@ -6,12 +6,35 @@
     <div class="container py-4">
         <div class="row g-4">
             <div class="col-md-5">
-                @if ($product->image_url)
-                    <img
-                        src="{{ $product->image_url }}"
-                        alt="{{ $product->name }}"
-                        class="img-fluid rounded"
-                    >
+                @if ($galleryImages->isNotEmpty())
+                    <div class="product-gallery" data-product-gallery>
+                        <div class="product-gallery__main">
+                            <img
+                                src="{{ $galleryImages->first()['url'] }}"
+                                alt="{{ $galleryImages->first()['alt'] }}"
+                                class="img-fluid rounded"
+                                data-gallery-main
+                            >
+                        </div>
+
+                        @if ($galleryImages->count() > 1)
+                            <div class="product-gallery__thumbnails" aria-label="Ảnh khác của {{ $product->name }}">
+                                @foreach ($galleryImages as $galleryImage)
+                                    <button
+                                        type="button"
+                                        class="product-gallery__thumbnail"
+                                        data-gallery-thumbnail
+                                        data-image-url="{{ $galleryImage['url'] }}"
+                                        data-image-alt="{{ $galleryImage['alt'] }}"
+                                        aria-label="Xem {{ $galleryImage['alt'] }}"
+                                        aria-pressed="{{ $loop->first ? 'true' : 'false' }}"
+                                    >
+                                        <img src="{{ $galleryImage['url'] }}" alt="" loading="lazy">
+                                    </button>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
                 @endif
             </div>
 
@@ -28,6 +51,21 @@
                 </a>
                 <p>{{ $product->description }}</p>
                 <h3>{{ number_format($product->price, 0, ',', '.') }}đ</h3>
+
+                @auth
+                    @php
+                        $isFavorite = auth()->user()->favoriteProducts()->whereKey($product->id)->exists();
+                    @endphp
+                    <form action="{{ route('wishlist.toggle', $product) }}" method="POST" class="product-favorite-form">
+                        @csrf
+                        <button type="submit" class="{{ $isFavorite ? 'is-active' : '' }}">
+                            <span aria-hidden="true">{{ $isFavorite ? '♥' : '♡' }}</span>
+                            {{ $isFavorite ? 'Đã yêu thích' : 'Thêm vào yêu thích' }}
+                        </button>
+                    </form>
+                @else
+                    <a class="product-favorite-login" href="{{ route('login') }}">Đăng nhập để lưu sản phẩm yêu thích</a>
+                @endauth
 
                 @if (session('error'))
                     <div class="alert alert-danger">{{ session('error') }}</div>
@@ -107,6 +145,32 @@
             </div>
         </div>
     </div>
+
+    @if ($recentlyViewed->isNotEmpty())
+        <section class="recently-viewed" aria-labelledby="recently-viewed-title">
+            <div class="recently-viewed__heading">
+                <div>
+                    <span class="eyebrow">Vừa xem</span>
+                    <h2 id="recently-viewed-title">Sản phẩm bạn đã xem</h2>
+                </div>
+            </div>
+            <div class="recently-viewed__grid">
+                @foreach ($recentlyViewed as $recentProduct)
+                    <a class="recently-viewed-card" href="{{ route('products.show', $recentProduct) }}">
+                        <span class="recently-viewed-card__image">
+                            @if ($recentProduct->image_url)
+                                <img src="{{ $recentProduct->image_url }}" alt="{{ $recentProduct->name }}" loading="lazy">
+                            @else
+                                <span>SL</span>
+                            @endif
+                        </span>
+                        <strong>{{ $recentProduct->name }}</strong>
+                        <span>{{ number_format($recentProduct->price, 0, ',', '.') }}đ</span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+    @endif
 
     <section class="product-reviews" id="product-reviews" aria-labelledby="product-reviews-title">
         <div class="product-reviews__heading">
@@ -315,6 +379,25 @@
             });
 
             refreshSelection();
+        </script>
+    @endif
+
+    @if ($galleryImages->count() > 1)
+        <script>
+            const galleryMainImage = document.querySelector('[data-gallery-main]');
+            const galleryThumbnails = [...document.querySelectorAll('[data-gallery-thumbnail]')];
+
+            galleryThumbnails.forEach((thumbnail) => {
+                thumbnail.addEventListener('click', () => {
+                    galleryMainImage.src = thumbnail.dataset.imageUrl;
+                    galleryMainImage.alt = thumbnail.dataset.imageAlt;
+
+                    galleryThumbnails.forEach((item) => {
+                        const selected = item === thumbnail;
+                        item.setAttribute('aria-pressed', String(selected));
+                    });
+                });
+            });
         </script>
     @endif
 @endsection

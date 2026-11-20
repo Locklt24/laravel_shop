@@ -91,21 +91,39 @@
                             @enderror
                         </div>
 
-                        <div class="checkout-field checkout-field--full @error('address') has-error @enderror">
-                            <label for="address">Địa chỉ giao hàng <span aria-hidden="true">*</span></label>
-                            <textarea
-                                id="address"
-                                name="address"
-                                rows="3"
-                                autocomplete="street-address"
-                                maxlength="500"
-                                required
-                                aria-invalid="@error('address') true @else false @enderror"
-                                @error('address') aria-describedby="address-error" @enderror
-                            >{{ old('address') }}</textarea>
-                            @error('address')
-                                <span class="checkout-field__error" id="address-error">{{ $message }}</span>
-                            @enderror
+                        <div class="checkout-field @error('province') has-error @enderror">
+                            <label for="province">Tỉnh/Thành phố <span aria-hidden="true">*</span></label>
+                            <div
+                                x-data="provincePicker"
+                                x-init="await init(@js(asset('data/vietnam-provinces.json')), @js(old('province', '')))"
+                            >
+                                <select
+                                    id="province"
+                                    name="province"
+                                    x-model="province"
+                                    autocomplete="address-level1"
+                                    required
+                                >
+                                    <option value="">Chọn tỉnh/thành</option>
+                                    <template x-for="item in provinces" :key="item.code">
+                                        <option :value="item.name" x-text="item.name"></option>
+                                    </template>
+                                </select>
+                                <small x-show="loading" class="checkout-field__loading">Đang tải danh sách tỉnh/thành...</small>
+                            </div>
+                            @error('province') <span class="checkout-field__error">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="checkout-field @error('ward') has-error @enderror">
+                            <label for="ward">Phường/Xã/Đặc khu <span aria-hidden="true">*</span></label>
+                            <input id="ward" name="ward" value="{{ old('ward') }}" autocomplete="address-level2" maxlength="100" placeholder="Ví dụ: Phường Sài Gòn" required>
+                            @error('ward') <span class="checkout-field__error">{{ $message }}</span> @enderror
+                        </div>
+
+                        <div class="checkout-field @error('shipping_note') has-error @enderror">
+                            <label for="shipping_note">Ghi chú giao hàng</label>
+                            <input id="shipping_note" name="shipping_note" value="{{ old('shipping_note') }}" maxlength="500" placeholder="Ví dụ: Gọi trước khi giao">
+                            @error('shipping_note') <span class="checkout-field__error">{{ $message }}</span> @enderror
                         </div>
                     </div>
 
@@ -113,6 +131,30 @@
                         <span aria-hidden="true">♧</span>
                         Thông tin của bạn chỉ được dùng để xử lý và giao đơn hàng.
                     </p>
+                </section>
+
+                <section class="checkout-card" aria-labelledby="checkout-payment-title">
+                    <div class="checkout-card__heading">
+                        <span class="checkout-card__number" aria-hidden="true">02</span>
+                        <div>
+                            <span class="eyebrow">Phương thức thanh toán</span>
+                            <h2 id="checkout-payment-title">Chọn cách thanh toán</h2>
+                        </div>
+                    </div>
+
+                    <div class="checkout-payment-options">
+                        <label>
+                            <input type="radio" name="payment_method" value="cod" @checked(old('payment_method', 'cod') === 'cod')>
+                            <span><strong>Thanh toán khi nhận hàng</strong><small>Thanh toán tiền mặt cho nhân viên giao hàng.</small></span>
+                        </label>
+                        <label>
+                            <input type="radio" name="payment_method" value="bank_transfer" @checked(old('payment_method') === 'bank_transfer')>
+                            <span><strong>Chuyển khoản ngân hàng</strong><small>Admin xác nhận thanh toán sau khi nhận được chuyển khoản.</small></span>
+                        </label>
+                    </div>
+                    @error('payment_method')
+                        <span class="checkout-field__error">{{ $message }}</span>
+                    @enderror
                 </section>
 
                 <button class="button button--dark checkout-submit" type="submit">
@@ -135,7 +177,7 @@
                             <div class="checkout-item__image">
                                 @if ($item['image'])
                                     <img
-                                        src="{{ \Illuminate\Support\Facades\Storage::disk('public')->url($item['image']) }}"
+                                        src="{{ \Illuminate\Support\Facades\Storage::disk('r2')->url($item['image']) }}"
                                         alt="{{ $item['name'] }}"
                                         loading="lazy"
                                     >
@@ -164,11 +206,11 @@
                     </div>
                     <div class="checkout-totals__row">
                         <span>Phí giao hàng</span>
-                        <strong>Miễn phí</strong>
+                        <strong>{{ $shippingFee > 0 ? number_format($shippingFee, 0, ',', '.').'đ' : 'Miễn phí' }}</strong>
                     </div>
                     <div class="checkout-totals__row checkout-totals__row--grand">
                         <span>Tổng thanh toán</span>
-                        <strong>{{ number_format($total, 0, ',', '.') }}đ</strong>
+                        <strong>{{ number_format($grandTotal, 0, ',', '.') }}đ</strong>
                     </div>
                 </div>
 
@@ -180,3 +222,31 @@
         </div>
     </section>
 @endsection
+
+@push('scripts')
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('provincePicker', () => ({
+                provinces: [],
+                province: '',
+                loading: true,
+
+                async init(url, selectedProvince) {
+                    this.province = selectedProvince || '';
+
+                    try {
+                        const response = await fetch(url, { headers: { Accept: 'application/json' } });
+                        if (! response.ok) {
+                            throw new Error('Không thể tải danh sách tỉnh/thành.');
+                        }
+
+                        this.provinces = await response.json();
+                    } finally {
+                        this.loading = false;
+                    }
+                },
+            }));
+        });
+    </script>
+@endpush

@@ -10,6 +10,7 @@ use App\Models\User;
 use Database\Factories\OrderFactory;
 use Illuminate\Foundation\Testing\LazilyRefreshDatabase;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\TestWith;
 use RuntimeException;
 use Tests\TestCase;
@@ -18,9 +19,27 @@ class CheckoutControllerTest extends TestCase
 {
     use LazilyRefreshDatabase;
 
+    public function test_static_vietnam_province_data_contains_the_current_34_entries(): void
+    {
+        $provinces = json_decode(
+            file_get_contents(public_path('data/vietnam-provinces.json')),
+            true,
+            flags: JSON_THROW_ON_ERROR
+        );
+        $provinceNames = array_column($provinces, 'name');
+
+        $this->assertCount(34, $provinces);
+        $this->assertContains('Hà Nội', $provinceNames);
+        $this->assertContains('TP. Hồ Chí Minh', $provinceNames);
+        $this->assertContains('Vĩnh Long', $provinceNames);
+        $this->assertNotContains('Bà Rịa - Vũng Tàu', $provinceNames);
+    }
+
     public function test_checkout_shows_delivery_form_and_cart_summary(): void
     {
-        $variant = ProductVariant::factory()->create(['color' => 'Blue', 'size' => 'M']);
+        Storage::fake('r2');
+        $product = Product::factory()->create(['image' => 'products/checkout-image.webp']);
+        $variant = ProductVariant::factory()->for($product)->create(['color' => 'Blue', 'size' => 'M']);
         $this->actingAs(User::factory()->create(['name' => 'Nguyen An']))
             ->withSession(['cart' => [$variant->id => $this->cartItem($variant, 2)]]);
 
@@ -31,9 +50,19 @@ class CheckoutControllerTest extends TestCase
             ->assertSeeText('Blue')
             ->assertSeeText('M')
             ->assertSeeText('300.000đ')
+            ->assertSee(Storage::disk('r2')->url('products/checkout-image.webp'), false)
             ->assertSee('name="receiver_name"', false)
             ->assertSee('name="phone"', false)
-            ->assertSee('name="address"', false)
+            ->assertSee('name="province"', false)
+            ->assertSee('name="ward"', false)
+            ->assertDontSee('name="district"', false)
+            ->assertSeeText('Phường/Xã/Đặc khu')
+            ->assertSee('name="shipping_note"', false)
+            ->assertSee('x-data="provincePicker"', false)
+            ->assertSee('vietnam-provinces.json', false)
+            ->assertSee('name="payment_method"', false)
+            ->assertSeeText('Thanh toán khi nhận hàng')
+            ->assertSeeText('Chuyển khoản ngân hàng')
             ->assertSee('value="Nguyen An"', false)
             ->assertSee(route('checkout.store'), false);
     }
@@ -64,8 +93,15 @@ class CheckoutControllerTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'user_id' => $user->id,
-            'total_amount' => 300000,
+            'address' => 'Phường Sài Gòn, TP. Hồ Chí Minh',
+            'province' => 'TP. Hồ Chí Minh',
+            'district' => null,
+            'ward' => 'Phường Sài Gòn',
+            'total_amount' => 330000,
             'status' => 'pending',
+            'payment_method' => 'cod',
+            'payment_status' => 'pending',
+            'shipping_fee' => 30000,
         ]);
         $this->assertDatabaseHas('order_items', [
             'order_id' => $order->id,
@@ -231,9 +267,66 @@ class CheckoutControllerTest extends TestCase
 
         $response = $this->post(route('checkout.store'), []);
 
-        $response->assertSessionHasErrors(['receiver_name', 'phone', 'address']);
+        $response->assertSessionHasErrors([
+            'receiver_name',
+            'phone',
+            'province',
+            'ward',
+            'payment_method',
+        ]);
         $this->assertDatabaseEmpty('orders');
         $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'stock' => 12]);
+    }
+
+    public function test_rejects_a_province_removed_by_the_administrative_reorganization(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $this->actingAs(User::factory()->create())
+            ->withSession(['cart' => [$variant->id => $this->cartItem($variant)]]);
+
+        $response = $this->post(route('checkout.store'), [
+            ...$this->recipient(),
+            'province' => 'Bà Rịa - Vũng Tàu',
+        ]);
+
+        $response->assertSessionHasErrors([
+            'province' => 'Vui lòng chọn tỉnh/thành phố theo danh sách hiện hành.',
+        ]);
+        $this->assertDatabaseEmpty('orders');
+        $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'stock' => 12]);
+    }
+
+    #[TestWith(['bank_transfer'])]
+    #[TestWith(['cod'])]
+    public function test_persists_the_selected_payment_method(string $paymentMethod): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $this->actingAs(User::factory()->create())
+            ->withSession(['cart' => [$variant->id => $this->cartItem($variant)]])
+            ->post(route('checkout.store'), [
+                ...$this->recipient(),
+                'payment_method' => $paymentMethod,
+            ])
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('orders', [
+            'payment_method' => $paymentMethod,
+            'payment_status' => 'pending',
+        ]);
+    }
+
+    public function test_rejects_an_unknown_payment_method(): void
+    {
+        $variant = ProductVariant::factory()->create();
+        $this->actingAs(User::factory()->create())
+            ->withSession(['cart' => [$variant->id => $this->cartItem($variant)]])
+            ->post(route('checkout.store'), [
+                ...$this->recipient(),
+                'payment_method' => 'crypto',
+            ])
+            ->assertSessionHasErrors(['payment_method']);
+
+        $this->assertDatabaseEmpty('orders');
     }
 
     public function test_redirects_unauthenticated_checkout_to_login(): void
@@ -265,12 +358,65 @@ class CheckoutControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    public function test_owner_can_cancel_pending_order_and_stock_is_restored(): void
+    {
+        $customer = User::factory()->create();
+        $variant = ProductVariant::factory()->create(['stock' => 10]);
+        $this->actingAs($customer)
+            ->withSession(['cart' => [$variant->id => $this->cartItem($variant, 2)]])
+            ->post(route('checkout.store'), $this->recipient());
+        $order = Order::sole();
+
+        $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'stock' => 8]);
+
+        $this->post(route('orders.cancel', $order))
+            ->assertRedirectToRoute('orders.show', $order)
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'cancelled']);
+        $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'stock' => 10]);
+    }
+
+    public function test_customer_cannot_cancel_another_customers_order(): void
+    {
+        $order = OrderFactory::new()->create(['status' => 'pending']);
+        $this->actingAs(User::factory()->create());
+
+        $this->post(route('orders.cancel', $order))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => 'pending']);
+    }
+
+    #[TestWith(['shipping'])]
+    #[TestWith(['completed'])]
+    #[TestWith(['cancelled'])]
+    public function test_customer_cannot_cancel_order_after_it_is_no_longer_pending(string $status): void
+    {
+        $customer = User::factory()->create();
+        $order = OrderFactory::new()->for($customer)->create(['status' => $status]);
+        $this->actingAs($customer);
+
+        $this->post(route('orders.cancel', $order))
+            ->assertRedirect()
+            ->assertSessionHas('error', 'Chỉ có thể hủy đơn hàng đang chờ xác nhận.');
+
+        $this->assertDatabaseHas('orders', ['id' => $order->id, 'status' => $status]);
+    }
+
     /**
-     * @return array{receiver_name: string, phone: string, address: string}
+     * @return array{receiver_name: string, phone: string, province: string, ward: string, shipping_note: string, payment_method: string}
      */
     private function recipient(): array
     {
-        return ['receiver_name' => 'Nguyen An', 'phone' => '0901234567', 'address' => '12 Nguyen Trai, Ho Chi Minh City'];
+        return [
+            'receiver_name' => 'Nguyen An',
+            'phone' => '0901234567',
+            'province' => 'TP. Hồ Chí Minh',
+            'ward' => 'Phường Sài Gòn',
+            'shipping_note' => 'Gọi trước khi giao',
+            'payment_method' => 'cod',
+        ];
     }
 
     /**

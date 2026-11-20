@@ -19,16 +19,55 @@
                     width="120"
                 >
                 <br>
+                <label>
+                    <input type="checkbox" name="remove_cover" value="1">
+                    Xóa ảnh bìa
+                </label>
             @endif
 
-            <input type="file" id="image" name="image" accept="image/*">
+            <input type="file" id="image" name="image" accept=".jpg,.jpeg,.png,.webp">
 
             @error('image')
                 <p style="color: red;">{{ $message }}</p>
             @enderror
         </div>
 
-<br>
+        <br>
+
+        @if ($product->galleryImages->isNotEmpty())
+            <fieldset>
+                <legend>Ảnh mẫu hiện có</legend>
+                <div class="product-gallery-manage">
+                    @foreach ($product->galleryImages as $galleryImage)
+                        <label class="product-gallery-manage__item">
+                            <img src="{{ $galleryImage->image_url }}" alt="{{ $product->name }} - ảnh {{ $loop->iteration + ($product->image ? 1 : 0) }}">
+                            <span>
+                                <input type="checkbox" name="remove_images[]" value="{{ $galleryImage->id }}">
+                                Xóa ảnh này
+                            </span>
+                        </label>
+                    @endforeach
+                </div>
+            </fieldset>
+            <br>
+        @endif
+
+        <div>
+            <label for="images">Thêm ảnh mẫu (có thể chọn nhiều ảnh):</label><br>
+            <input type="file" id="images" name="images[]" accept=".jpg,.jpeg,.png,.webp" multiple>
+            <small>Còn {{ $remainingImageSlots }} vị trí trong album (tối đa 10 ảnh).</small>
+
+            @foreach ($errors->getMessages() as $field => $messages)
+                @if ($field === 'images' || str_starts_with($field, 'images.') || $field === 'remove_images')
+                    @foreach ($messages as $message)
+                        <p style="color: red;">{{ $message }}</p>
+                    @endforeach
+                @endif
+            @endforeach
+        </div>
+
+        <br>
+
         <div>
             <label>Tên sản phẩm:</label><br>
             <input

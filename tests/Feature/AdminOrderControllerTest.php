@@ -72,7 +72,9 @@ class AdminOrderControllerTest extends TestCase
             ->post(route('checkout.store'), [
                 'receiver_name' => 'Nguyen An',
                 'phone' => '0901234567',
-                'address' => '12 Nguyen Trai',
+                'province' => 'TP. Hồ Chí Minh',
+                'ward' => 'Phường Sài Gòn',
+                'payment_method' => 'cod',
             ]);
         $order = Order::sole();
         $this->assertDatabaseHas('product_variants', ['id' => $variant->id, 'stock' => 10]);
@@ -146,7 +148,7 @@ class AdminOrderControllerTest extends TestCase
 
         $response->assertSee('value="completed"', false)
             ->assertSee('value="cancelled"', false)
-            ->assertDontSee('value="pending"', false);
+            ->assertDontSeeText('Chờ xác nhận');
     }
 
     public function test_order_edit_form_explains_when_status_cannot_be_changed_further(): void

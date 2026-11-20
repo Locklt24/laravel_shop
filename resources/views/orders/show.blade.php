@@ -46,6 +46,19 @@
             </span>
         </header>
 
+        @if ($order->status === 'pending')
+            <form
+                class="order-cancel-form"
+                action="{{ route('orders.cancel', $order) }}"
+                method="POST"
+                onsubmit="return confirm('Bạn có chắc muốn hủy đơn hàng này?')"
+            >
+                @csrf
+                <span>Bạn có thể hủy đơn khi đơn vẫn đang chờ xác nhận.</span>
+                <button type="submit">Hủy đơn hàng</button>
+            </form>
+        @endif
+
         @if ($order->status === 'cancelled')
             <div class="order-cancelled" role="status">
                 <span aria-hidden="true">×</span>
@@ -154,7 +167,36 @@
                     </span>
                     <div>
                         <span>Địa chỉ giao hàng</span>
-                        <strong>{{ $order->address }}</strong>
+                        @if ($order->ward || $order->district || $order->province)
+                            <strong>{{ collect([$order->ward, $order->district, $order->province])->filter()->join(', ') }}</strong>
+                        @elseif ($order->address)
+                            <strong>{{ $order->address }}</strong>
+                        @endif
+                    </div>
+                </div>
+
+                @if ($order->shipping_note)
+                    <div class="order-recipient__person">
+                        <span class="order-recipient__icon" aria-hidden="true">✎</span>
+                        <div>
+                            <span>Ghi chú giao hàng</span>
+                            <strong>{{ $order->shipping_note }}</strong>
+                        </div>
+                    </div>
+                @endif
+
+                <div class="order-recipient__person">
+                    <span class="order-recipient__icon" aria-hidden="true">₫</span>
+                    <div>
+                        <span>Thanh toán</span>
+                        <strong>
+                            {{ $order->payment_method === 'cod' ? 'Thanh toán khi nhận hàng' : 'Chuyển khoản ngân hàng' }}
+                            · {{ [
+                                'pending' => 'Chưa thanh toán',
+                                'paid' => 'Đã thanh toán',
+                                'refunded' => 'Đã hoàn tiền',
+                            ][$order->payment_status] ?? $order->payment_status }}
+                        </strong>
                     </div>
                 </div>
 

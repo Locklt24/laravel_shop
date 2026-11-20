@@ -46,6 +46,7 @@ class AdminOrderController extends Controller
     {
         $data = $request->validate([
             'status' => 'required|in:pending,shipping,completed,cancelled',
+            'payment_status' => 'nullable|in:pending,paid,refunded',
         ]);
 
         DB::transaction(function () use ($data, $order): void {
@@ -80,8 +81,19 @@ class AdminOrderController extends Controller
                 }
             }
 
+            $paymentStatus = $data['payment_status'] ?? $order->payment_status;
+
+            if ($data['status'] === 'completed' && $order->payment_method === 'cod') {
+                $paymentStatus = 'paid';
+            }
+
+            if ($data['status'] === 'cancelled' && $paymentStatus === 'paid') {
+                $paymentStatus = 'refunded';
+            }
+
             $order->update([
                 'status' => $data['status'],
+                'payment_status' => $paymentStatus,
             ]);
         });
 

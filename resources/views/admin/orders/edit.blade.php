@@ -54,6 +54,13 @@
                         @endforeach
                     </select>
 
+                    <label class="d-block mb-2" for="payment_status">Trạng thái thanh toán</label>
+                    <select class="form-select mb-3" id="payment_status" name="payment_status">
+                        <option value="pending" @selected(old('payment_status', $order->payment_status) === 'pending')>Chưa thanh toán</option>
+                        <option value="paid" @selected(old('payment_status', $order->payment_status) === 'paid')>Đã thanh toán</option>
+                        <option value="refunded" @selected(old('payment_status', $order->payment_status) === 'refunded')>Đã hoàn tiền</option>
+                    </select>
+
                     <button class="button button--dark" type="submit">Lưu trạng thái</button>
                 </form>
             @else

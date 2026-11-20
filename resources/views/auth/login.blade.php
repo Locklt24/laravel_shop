@@ -13,6 +13,9 @@
                 <span class="eyebrow">Rất vui được gặp lại bạn</span>
                 <h1 id="login-title">Chào mừng quay lại</h1>
                 <p class="auth-intro">Đăng nhập để tiếp tục mua sắm và theo dõi đơn hàng của bạn.</p>
+                @if (session('status'))
+                    <div class="notice notice--success" role="status">{{ session('status') }}</div>
+                @endif
 
                 <form class="auth-form" action="{{ route('login.store') }}" method="POST">
                     @csrf
@@ -55,6 +58,10 @@
                         <span aria-hidden="true">→</span>
                     </button>
                 </form>
+
+                <p class="auth-switch">
+                    <a href="{{ route('password.request') }}">Quên mật khẩu?</a>
+                </p>
 
                 <p class="auth-switch">
                     Chưa có tài khoản?

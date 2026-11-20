@@ -101,6 +101,15 @@
                     </a>
                 @endif
 
+                <a class="account-shortcut" href="{{ route('password.change') }}">
+                    <span class="account-shortcut__icon" aria-hidden="true">⌕</span>
+                    <span class="account-shortcut__copy">
+                        <strong>Đổi mật khẩu</strong>
+                        <span>Cập nhật mật khẩu đăng nhập</span>
+                    </span>
+                    <span class="account-shortcut__arrow" aria-hidden="true">↗</span>
+                </a>
+
                 <form class="account-logout" action="{{ route('logout') }}" method="POST">
                     @csrf
                     <button class="account-logout__button" type="submit">

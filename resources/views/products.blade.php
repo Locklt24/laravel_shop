@@ -53,8 +53,37 @@
                 </select>
             </label>
 
+            <label class="filter-select">
+                <span class="visually-hidden">Kho hàng</span>
+                <select name="availability">
+                    <option value="">Tất cả tình trạng</option>
+                    <option value="in" @selected($availability === 'in')>Còn hàng</option>
+                    <option value="out" @selected($availability === 'out')>Hết hàng</option>
+                </select>
+            </label>
+
+            <label class="filter-select">
+                <span class="visually-hidden">Sắp xếp</span>
+                <select name="sort">
+                    <option value="">Mới nhất</option>
+                    <option value="price_asc" @selected($sort === 'price_asc')>Giá tăng dần</option>
+                    <option value="price_desc" @selected($sort === 'price_desc')>Giá giảm dần</option>
+                    <option value="name" @selected($sort === 'name')>Tên A-Z</option>
+                </select>
+            </label>
+
+            <label class="filter-select">
+                <span class="visually-hidden">Giá tối thiểu</span>
+                <input type="number" name="min_price" min="0" value="{{ $minPrice ?: '' }}" placeholder="Giá tối thiểu">
+            </label>
+
+            <label class="filter-select">
+                <span class="visually-hidden">Giá tối đa</span>
+                <input type="number" name="max_price" min="0" value="{{ $maxPrice ?: '' }}" placeholder="Giá tối đa">
+            </label>
+
             <button class="button button--dark" type="submit">Tìm sản phẩm</button>
-            @if ($keyword || $categoryId)
+            @if ($keyword || $categoryId || $availability || $sort || $minPrice || $maxPrice)
                 <a class="filter-reset" href="{{ route('products') }}">Xóa bộ lọc</a>
             @endif
         </form>

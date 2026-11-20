@@ -21,6 +21,7 @@ RUN apt-get update \
         unzip \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" bcmath exif gd mbstring pdo_mysql zip \
+    && printf 'upload_tmp_dir=/tmp\nupload_max_filesize=12M\npost_max_size=110M\n' > /usr/local/etc/php/conf.d/uploads.ini \
     && a2enmod rewrite \
     && sed -ri 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf \
     && sed -ri '/<Directory \/var\/www\/>/,/<\/Directory>/ s/AllowOverride None/AllowOverride All/' /etc/apache2/apache2.conf \
@@ -44,4 +45,4 @@ RUN composer install \
 
 EXPOSE 80
 
-CMD ["sh", "-c", "php artisan storage:link --force && apache2-foreground"]
+CMD ["sh", "-c", "php artisan optimize:clear && php artisan storage:link --force && if [ -n \"$R2_ACCESS_KEY_ID\" ] && [ -n \"$R2_SECRET_ACCESS_KEY\" ] && [ -n \"$R2_BUCKET\" ] && [ -n \"$R2_ENDPOINT\" ] && [ -n \"$R2_URL\" ]; then php artisan storage:sync-public-images-to-r2 || echo 'Warning: could not sync public images to R2'; fi && apache2-foreground"]
