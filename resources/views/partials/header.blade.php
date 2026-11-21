@@ -1,8 +1,8 @@
 <header class="site-header">
     <div class="site-header__inner">
-        <a class="site-brand" href="{{ route('home') }}" aria-label="Shop Laravel - Trang chủ">
-            <span class="site-brand__mark" aria-hidden="true">S</span>
-            <span class="site-brand__text">shop<span>laravel</span></span>
+        <a class="site-brand" href="{{ route('home') }}" aria-label="{{ config('shop.name') }} - Trang chủ">
+            <span class="site-brand__mark" aria-hidden="true">{{ strtoupper(substr(config('shop.name'), 0, 1)) }}</span>
+            <span class="site-brand__text">{{ config('shop.name') }}</span>
         </a>
 
         <nav class="site-nav" aria-label="Điều hướng chính">

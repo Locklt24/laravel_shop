@@ -14,10 +14,6 @@ use Illuminate\View\View;
 
 class CheckoutController extends Controller
 {
-    private const FREE_SHIPPING_THRESHOLD = 500000;
-
-    private const SHIPPING_FEE = 30000;
-
     public function create(): View|RedirectResponse
     {
         $cart = session('cart', []);
@@ -51,11 +47,14 @@ class CheckoutController extends Controller
         $data = $request->validate([
             'receiver_name' => 'required|string|max:255',
             'phone' => 'required|string|max:20',
+            'address' => 'required|string|max:160',
             'province' => ['required', 'string', 'max:100', Rule::in($provinces)],
-            'ward' => 'required|string|max:100',
+            'ward' => 'required|string|max:50',
             'shipping_note' => 'nullable|string|max:500',
             'payment_method' => 'required|in:cod,bank_transfer',
         ], [
+            'address.required' => 'Vui lòng nhập số nhà và tên đường.',
+            'address.max' => 'Địa chỉ không được vượt quá 160 ký tự.',
             'province.in' => 'Vui lòng chọn tỉnh/thành phố theo danh sách hiện hành.',
         ]);
 
@@ -105,7 +104,7 @@ class CheckoutController extends Controller
                 'code' => 'DH-'.now()->format('YmdHis').'-'.Str::upper(Str::random(4)),
                 'receiver_name' => $data['receiver_name'],
                 'phone' => $data['phone'],
-                'address' => collect([$data['ward'], $data['province']])->filter()->join(', '),
+                'address' => collect([$data['address'], $data['ward'], $data['province']])->filter()->join(', '),
                 'province' => $data['province'],
                 'ward' => $data['ward'],
                 'shipping_note' => $data['shipping_note'] ?? null,
@@ -147,8 +146,8 @@ class CheckoutController extends Controller
 
     private function shippingFee(float $subtotal): int
     {
-        return $subtotal >= self::FREE_SHIPPING_THRESHOLD
+        return $subtotal >= (int) config('shop.shipping.free_threshold')
             ? 0
-            : self::SHIPPING_FEE;
+            : (int) config('shop.shipping.fee');
     }
 }

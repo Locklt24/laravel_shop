@@ -71,4 +71,22 @@ class OrderControllerTest extends TestCase
             ->assertSeeText('0901234567')
             ->assertSeeText('12 Nguyen Trai');
     }
+
+    public function test_pending_bank_transfer_order_shows_account_details_and_order_code(): void
+    {
+        $user = User::factory()->create();
+        $order = OrderFactory::new()->for($user)->create([
+            'code' => 'DH-TRANSFER-001',
+            'payment_method' => 'bank_transfer',
+            'payment_status' => 'pending',
+        ]);
+        $this->actingAs($user);
+
+        $response = $this->get(route('orders.show', $order));
+
+        $response->assertSeeText('Techcombank')
+            ->assertSeeText('DO TIEN LOC')
+            ->assertSeeText('8625488888')
+            ->assertSeeText('DH-TRANSFER-001');
+    }
 }

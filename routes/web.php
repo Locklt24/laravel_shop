@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
+Route::get('/thong-tin-cua-hang', function () {
+    return view('store-information');
+})->name('store.information');
+
 Route::get('/san-pham', [ProductController::class, 'index'])
     ->name('products');
 

@@ -91,6 +91,25 @@
                             @enderror
                         </div>
 
+                        <div class="checkout-field @error('address') has-error @enderror">
+                            <label for="address">Số nhà, tên đường <span aria-hidden="true">*</span></label>
+                            <input
+                                id="address"
+                                type="text"
+                                name="address"
+                                value="{{ old('address') }}"
+                                autocomplete="street-address"
+                                maxlength="160"
+                                placeholder="Ví dụ: 12 Nguyễn Trãi"
+                                required
+                                aria-invalid="@error('address') true @else false @enderror"
+                                @error('address') aria-describedby="address-error" @enderror
+                            >
+                            @error('address')
+                                <span class="checkout-field__error" id="address-error">{{ $message }}</span>
+                            @enderror
+                        </div>
+
                         <div class="checkout-field @error('province') has-error @enderror">
                             <label for="province">Tỉnh/Thành phố <span aria-hidden="true">*</span></label>
                             <div
@@ -149,9 +168,18 @@
                         </label>
                         <label>
                             <input type="radio" name="payment_method" value="bank_transfer" @checked(old('payment_method') === 'bank_transfer')>
-                            <span><strong>Chuyển khoản ngân hàng</strong><small>Admin xác nhận thanh toán sau khi nhận được chuyển khoản.</small></span>
+                            <span><strong>Chuyển khoản ngân hàng</strong><small>Shop xác nhận thủ công sau khi nhận được chuyển khoản.</small></span>
                         </label>
                     </div>
+                    <details class="checkout-bank-transfer">
+                        <summary>Thông tin tài khoản chuyển khoản</summary>
+                        <dl>
+                            <div><dt>Ngân hàng</dt><dd>{{ config('shop.bank_transfer.bank') }}</dd></div>
+                            <div><dt>Chủ tài khoản</dt><dd>{{ config('shop.bank_transfer.account_name') }}</dd></div>
+                            <div><dt>Số tài khoản</dt><dd>{{ config('shop.bank_transfer.account_number') }}</dd></div>
+                        </dl>
+                        <p>Sau khi đặt hàng, dùng mã đơn hàng làm nội dung chuyển khoản.</p>
+                    </details>
                     @error('payment_method')
                         <span class="checkout-field__error">{{ $message }}</span>
                     @enderror
@@ -215,8 +243,8 @@
                 </div>
 
                 <p class="checkout-summary__footnote">
-                    <span aria-hidden="true">✓</span>
-                    Bạn sẽ kiểm tra đơn hàng trước khi hoàn tất.
+                    <span aria-hidden="true">⌂</span>
+                    Thời gian giao dự kiến: {{ config('shop.shipping.delivery_times.hanoi') }} {{ config('shop.shipping.delivery_times.other') }}
                 </p>
             </aside>
         </div>

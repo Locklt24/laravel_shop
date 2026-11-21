@@ -53,6 +53,7 @@ class CheckoutControllerTest extends TestCase
             ->assertSee(Storage::disk('r2')->url('products/checkout-image.webp'), false)
             ->assertSee('name="receiver_name"', false)
             ->assertSee('name="phone"', false)
+            ->assertSee('name="address"', false)
             ->assertSee('name="province"', false)
             ->assertSee('name="ward"', false)
             ->assertDontSee('name="district"', false)
@@ -63,6 +64,9 @@ class CheckoutControllerTest extends TestCase
             ->assertSee('name="payment_method"', false)
             ->assertSeeText('Thanh toán khi nhận hàng')
             ->assertSeeText('Chuyển khoản ngân hàng')
+            ->assertSeeText('Techcombank')
+            ->assertSeeText('8625488888')
+            ->assertSeeText('30.000đ')
             ->assertSee('value="Nguyen An"', false)
             ->assertSee(route('checkout.store'), false);
     }
@@ -93,7 +97,7 @@ class CheckoutControllerTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'id' => $order->id,
             'user_id' => $user->id,
-            'address' => 'Phường Sài Gòn, TP. Hồ Chí Minh',
+            'address' => '12 Nguyễn Trãi, Phường Sài Gòn, TP. Hồ Chí Minh',
             'province' => 'TP. Hồ Chí Minh',
             'district' => null,
             'ward' => 'Phường Sài Gòn',
@@ -270,6 +274,7 @@ class CheckoutControllerTest extends TestCase
         $response->assertSessionHasErrors([
             'receiver_name',
             'phone',
+            'address',
             'province',
             'ward',
             'payment_method',
@@ -312,6 +317,29 @@ class CheckoutControllerTest extends TestCase
         $this->assertDatabaseHas('orders', [
             'payment_method' => $paymentMethod,
             'payment_status' => 'pending',
+        ]);
+    }
+
+    #[TestWith([499999, 30000, 529999])]
+    #[TestWith([500000, 0, 500000])]
+    public function test_applies_free_shipping_at_the_configured_order_threshold(
+        int $subtotal,
+        int $shippingFee,
+        int $totalAmount
+    ): void {
+        $user = User::factory()->create();
+        $product = Product::factory()->create(['price' => $subtotal]);
+        $variant = ProductVariant::factory()->for($product)->create();
+        $this->actingAs($user)
+            ->withSession(['cart' => [$variant->id => $this->cartItem($variant)]]);
+
+        $this->post(route('checkout.store'), $this->recipient())
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('orders', [
+            'user_id' => $user->id,
+            'shipping_fee' => $shippingFee,
+            'total_amount' => $totalAmount,
         ]);
     }
 
@@ -405,13 +433,14 @@ class CheckoutControllerTest extends TestCase
     }
 
     /**
-     * @return array{receiver_name: string, phone: string, province: string, ward: string, shipping_note: string, payment_method: string}
+     * @return array{receiver_name: string, phone: string, address: string, province: string, ward: string, shipping_note: string, payment_method: string}
      */
     private function recipient(): array
     {
         return [
             'receiver_name' => 'Nguyen An',
             'phone' => '0901234567',
+            'address' => '12 Nguyễn Trãi',
             'province' => 'TP. Hồ Chí Minh',
             'ward' => 'Phường Sài Gòn',
             'shipping_note' => 'Gọi trước khi giao',

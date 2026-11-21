@@ -167,10 +167,10 @@
                     </span>
                     <div>
                         <span>Địa chỉ giao hàng</span>
-                        @if ($order->ward || $order->district || $order->province)
-                            <strong>{{ collect([$order->ward, $order->district, $order->province])->filter()->join(', ') }}</strong>
-                        @elseif ($order->address)
+                        @if ($order->address)
                             <strong>{{ $order->address }}</strong>
+                        @elseif ($order->ward || $order->district || $order->province)
+                            <strong>{{ collect([$order->ward, $order->district, $order->province])->filter()->join(', ') }}</strong>
                         @endif
                     </div>
                 </div>
@@ -199,6 +199,31 @@
                         </strong>
                     </div>
                 </div>
+
+                @if ($order->payment_method === 'bank_transfer' && $order->payment_status === 'pending' && $order->status !== 'cancelled')
+                    <section class="account-details order-bank-transfer" aria-labelledby="order-bank-transfer-title">
+                        <h3 id="order-bank-transfer-title">Thông tin chuyển khoản</h3>
+                        <dl class="account-info">
+                            <div>
+                                <dt>Ngân hàng</dt>
+                                <dd>{{ config('shop.bank_transfer.bank') }}</dd>
+                            </div>
+                            <div>
+                                <dt>Chủ tài khoản</dt>
+                                <dd>{{ config('shop.bank_transfer.account_name') }}</dd>
+                            </div>
+                            <div>
+                                <dt>Số tài khoản</dt>
+                                <dd>{{ config('shop.bank_transfer.account_number') }}</dd>
+                            </div>
+                            <div>
+                                <dt>Nội dung</dt>
+                                <dd>{{ $order->code }}</dd>
+                            </div>
+                        </dl>
+                        <p class="account-details__note">Shop sẽ xác nhận thanh toán sau khi nhận được chuyển khoản.</p>
+                    </section>
+                @endif
 
                 <a class="order-recipient__link" href="{{ route('orders.index') }}">
                     Tất cả đơn hàng <span aria-hidden="true">→</span>

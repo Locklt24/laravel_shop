@@ -7,7 +7,7 @@
     --accent: #d66d4c;
     --accent-dark: #a94b31;
     --sage: #dce4d9;
-    --serif: Georgia, 'Times New Roman', serif;
+    --serif: Cambria, 'Noto Serif', 'Times New Roman', serif;
 }
 
 * {
@@ -833,6 +833,7 @@ body.shop-body {
 
 .site-footer__bottom {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 16px;
     padding-top: 16px;
@@ -3302,7 +3303,7 @@ body.shop-body {
     padding-top: 13px;
     border-top: 1px solid var(--line);
     color: var(--muted);
-    font-size: 9px;
+    font-size: 10px;
     line-height: 1.6;
 }
 
@@ -4178,6 +4179,59 @@ body.shop-body {
     color: var(--muted);
     font-size: 10px;
     line-height: 1.5;
+}
+
+.checkout-bank-transfer {
+    margin-top: 14px;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: #fffefa;
+    font-size: 11px;
+}
+
+.checkout-bank-transfer summary {
+    color: var(--ink);
+    cursor: pointer;
+    font-weight: 700;
+}
+
+.checkout-bank-transfer dl {
+    display: grid;
+    gap: 7px;
+    margin: 12px 0 0;
+}
+
+.checkout-bank-transfer dl > div {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 4px 12px;
+}
+
+.checkout-bank-transfer dt {
+    color: var(--muted);
+}
+
+.checkout-bank-transfer dd {
+    margin: 0;
+    font-weight: 700;
+}
+
+.checkout-bank-transfer p {
+    margin: 12px 0 0;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.order-bank-transfer {
+    margin: 18px 0;
+    padding: 16px;
+}
+
+.order-bank-transfer h3 {
+    margin: 0 0 8px;
+    font-size: 15px;
 }
 
 .order-cancel-form {

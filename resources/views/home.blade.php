@@ -21,7 +21,7 @@
             <div class="hero__shape hero__shape--back"></div>
             <div class="hero__shape hero__shape--front"></div>
             <div class="hero__caption">
-                <span>SHOP LARAVEL</span>
+                <span>{{ strtoupper(config('shop.name')) }}</span>
                 <strong>Đơn giản<br>mà chất.</strong>
             </div>
             <span class="hero__spark hero__spark--one">✳</span>

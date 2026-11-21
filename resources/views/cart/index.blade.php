@@ -66,7 +66,7 @@
                             </div>
 
                             <div class="cart-item__details">
-                                <span class="cart-item__label">Shop Laravel</span>
+                                <span class="cart-item__label">{{ config('shop.name') }}</span>
                                 <h3>{{ $item['name'] }}</h3>
                                 <p class="cart-item__variant">Màu: {{ $item['color'] }} | Size: {{ $item['size'] }}</p>
                                 <strong class="cart-item__unit-price">
@@ -129,7 +129,7 @@
                         <strong>{{ number_format($total, 0, ',', '.') }}đ</strong>
                     </div>
                     <div class="cart-summary__row cart-summary__row--total">
-                        <span>Tổng cộng</span>
+                        <span>Tạm tính sản phẩm</span>
                         <strong>{{ number_format($total, 0, ',', '.') }}đ</strong>
                     </div>
 
@@ -145,7 +145,8 @@
 
                     <p class="cart-summary__note">
                         <span aria-hidden="true">♧</span>
-                        Bạn có thể kiểm tra thông tin giao hàng ở bước tiếp theo.
+                        Phí giao hàng {{ number_format(config('shop.shipping.fee'), 0, ',', '.') }}đ; miễn phí từ đơn
+                        {{ number_format(config('shop.shipping.free_threshold'), 0, ',', '.') }}đ.
                     </p>
                     <a class="cart-summary__continue" href="{{ route('products') }}">
                         Tiếp tục khám phá <span aria-hidden="true">↗</span>
